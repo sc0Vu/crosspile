@@ -12,10 +12,9 @@
     "babel-eslint": "^7.2.3",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-preset-es2017": "^6.24.1",
-    "mocha": "^3.5.0",
-    "ololog": "^1.0.15"
+    "mocha": "^10.2.0"
   },
   "dependencies": {
-    "espree": "^3.5.0"
+    "espree": "^9.4.1"
   }
 }
