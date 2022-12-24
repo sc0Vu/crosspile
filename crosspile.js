@@ -7,7 +7,13 @@ const espree = require ('espree')
 
 module.exports = function crosspile (js, { from = 'JavaScript', to } = {}) {
 
-    const ast = espree.parse (js, { ecmaVersion: 8, ecmaFeatures: { experimentalObjectRestSpread: true } })
+    const ast = espree.parse (js, {
+        ecmaVersion: 8,
+        sourceType: 'module',
+        ecmaFeatures: {
+            impliedStrict: true
+        }
+    })
 
     return python.generateFrom (ast)
 }
