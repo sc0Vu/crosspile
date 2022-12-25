@@ -150,11 +150,15 @@ const match = {
         }
         const binaryText = match[test.right.type] ? match[test.right.type](test.right, $) : 'g'
         forBody += ',' + binaryText
-        forBody += ':'
+        forBody += ':\n'
 
-        return [
-            forBody
-        ].concat(body.body.map(n => blockTree (n)))
+        // TODO: depth issue
+        // return [
+        //     forBody,
+        //     ...body.body.map(n => blockTree (n))
+        // ]
+        forBody += body.body.map(n => blockTree (n)).map(n => '    '.repeat(3) + n).join('\n')
+        return forBody
     },
 
     other: ({ type, start, end, ...rest }) =>
