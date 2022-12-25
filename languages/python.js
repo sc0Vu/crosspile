@@ -61,10 +61,39 @@ const match = {
     ExpressionStatement: ({ expression }, $) =>
 
         $(expression),
+    
+    ThisExpression: () => 'self',
 
-    CallExpression: ({ callee, arguments: args /* arguments is reserved keyword in strict mode, cannot use as a var name */ }, $) =>
+    AwaitExpression: ({ argument: arg }, $) => {
+        return (match[arg.type] || match.other)(arg, (x) => (match[x.type] !== undefined) ? match[x.type](x) : '')
+    },
 
-        $(callee) + '(' + args.map ($).join (',') + ')',
+    MemberExpression: ({ object, property, ...rest }, $) => {
+        if (object.type === 'Identifier' && property.type === 'Identifier') {
+            if (object.name === 'Object' && property.name === 'keys') {
+                return 'list'
+            } else if (property.name === 'length') {
+                return 'len(' + object.name + ')'
+            }
+            return ''
+        } else if (object.type === 'Identifier' && property.type === 'Literal') {
+            return object.name + "['" + property.value + "']"
+        }
+        return (match[object.type] !== undefined && match[property.type] !== undefined) ? match[object.type](object, $) + '.' + match[property.type](property, $) : ''
+    },
+
+    CallExpression: ({ callee, arguments: args /* arguments is reserved keyword in strict mode, cannot use as a var name */ }, $) => {
+
+        if (args.length === 0) {
+            return $(callee) + '()'
+        }
+        let result = $(callee) + '(' + args.map ($).join (',')
+        if (callee.object && callee.property && callee.object.name === 'Object' && callee.property.name === 'keys') {
+            result += '.keys()'
+        }
+        result += ')'
+        return result
+    },
 
     ObjectExpression: ({ properties }, $) =>
 
@@ -81,6 +110,34 @@ const match = {
     Literal: ({ value }, $) =>
 
         "'" + value + "'",
+
+    ReturnStatement: ({ argument: arg }) => match[arg.type] ? 'return ' + match[arg.type](arg) : 'return None',
+    
+    VariableDeclaration: ({ declarations, kind }) => declarations.map((declaration) =>
+        match.Identifier(declaration.id) + ' = ' + (
+            (match[declaration.init.type] || match.other)(declaration.init, (arg) => (match[arg.type] || match.other)(arg)))
+    ).join('\n'),
+
+    // BinaryExpression: ({ left, right }, $) => '',
+
+    // UpdateExpression: ({ operator, argument }, $) => '',
+
+    ForStatement: ({ init, test, update, body }, $) => {
+        let forBody = 'for '
+
+        const initText = match[init.type] ? match[init.type](init, $) : ''
+        const parsedInit = initText.split('=')
+        if (parsedInit.length > 0) {
+            forBody += parsedInit[0].replace(' ', '') + ' in range(' + parsedInit[1].replace(' ', '').replace('\'', '').replace('\'', '')
+        }
+        const binaryText = match[test.right.type] ? match[test.right.type](test.right, $) : 'g'
+        forBody += ',' + binaryText
+        forBody += ':'
+
+        // forBody += body.body.map($)
+
+        return forBody + '\n            # TODO: recursive parse body'
+    },
 
     other: ({ type, start, end, ...rest }) =>
 
