@@ -61,11 +61,19 @@ const match = {
     ExpressionStatement: ({ expression }, $) =>
 
         $(expression),
+
+    AssignmentExpression: ({ left, right, operator = '=' }, $) =>
+    
+        $(left) + ' ' + operator + ' ' + $(right),
+
+    ExpressionStatement: ({ expression }, $) =>
+
+        $(expression),
     
     ThisExpression: () => 'self',
 
     AwaitExpression: ({ argument: arg }, $) => {
-        return (match[arg.type] || match.other)(arg, (x) => (match[x.type] !== undefined) ? match[x.type](x) : '')
+        return (match[arg.type] || match.other)(arg, n => blockTree(n))
     },
 
     MemberExpression: ({ object, property, ...rest }, $) => {
@@ -74,8 +82,14 @@ const match = {
                 return 'list'
             } else if (property.name === 'length') {
                 return 'len(' + object.name + ')'
+            } else if (property.name === 'toUpperCase') {
+                return object.name + '.upper'
+            } else if (property.name === 'split') {
+                return object.name + '.split'
+            } else if (property.name === 'push') {
+                return object.name + '.append'
             }
-            return ''
+            return object.name + '[' + property.name + ']'
         } else if (object.type === 'Identifier' && property.type === 'Literal') {
             return object.name + "['" + property.value + "']"
         }
@@ -99,6 +113,10 @@ const match = {
 
         '{ ' + properties.map ($).join (', ') + ' }',
 
+    ArrayPattern: ({ elements }, $) => 
+    
+        elements.map($).join(', '),
+
     ArrayExpression: ({ elements }, $) =>
 
         '[' + elements.map ($).join (', ') + ']',
@@ -114,8 +132,8 @@ const match = {
     ReturnStatement: ({ argument: arg }) => match[arg.type] ? 'return ' + match[arg.type](arg) : 'return None',
     
     VariableDeclaration: ({ declarations, kind }) => declarations.map((declaration) =>
-        match.Identifier(declaration.id) + ' = ' + (
-            (match[declaration.init.type] || match.other)(declaration.init, (arg) => (match[arg.type] || match.other)(arg)))
+            (match[declaration.id.type] || match.other)(declaration.id, n => blockTree(n)) + ' = ' + (
+            (match[declaration.init.type] || match.other)(declaration.init, n => blockTree(n)))
     ).join('\n'),
 
     // BinaryExpression: ({ left, right }, $) => '',
@@ -134,9 +152,9 @@ const match = {
         forBody += ',' + binaryText
         forBody += ':'
 
-        // forBody += body.body.map($)
-
-        return forBody + '\n            # TODO: recursive parse body'
+        return [
+            forBody
+        ].concat(body.body.map(n => blockTree (n)))
     },
 
     other: ({ type, start, end, ...rest }) =>
